@@ -4,6 +4,7 @@ import * as Popover from '@radix-ui/react-popover'
 import { CiCalendar } from 'react-icons/ci'
 import { AnimatePresence, motion } from 'framer-motion'
 import Calendar from './Calendar'
+import HourSelector from './HourSelector'
 
 interface DatePickerProps {
 	value?: Dayjs
@@ -22,7 +23,7 @@ const DatePicker = ({ value, min, max, onChange }: DatePickerProps) => {
 				<button className="flex h-fit w-[280px] gap-2 rounded-md border border-white p-2 font-medium transition hover:bg-white hover:text-gray-700">
 					<CiCalendar size={24} strokeWidth={1} />
 					{date ? (
-						date.format('DD MMMM, YYYY')
+						date.format('DD.MM.YYYY HH:mm')
 					) : (
 						<span>Pick a date</span>
 					)}
@@ -36,17 +37,29 @@ const DatePicker = ({ value, min, max, onChange }: DatePickerProps) => {
 								initial={{ opacity: 0 }}
 								animate={{ opacity: 1 }}
 								exit={{ opacity: 0 }}
-								className="mt-2 h-auto w-auto"
+								className="z-10 m-2"
 							>
 								<Calendar
 									value={date}
 									min={min}
 									max={max}
-									onChange={(date) => {
-										setDate(date)
-										onChange?.(date)
+									onChange={(newDate) => {
+										const hour = date?.hour() ?? 0
+										const x = newDate?.set('hour', hour)
+										setDate(x)
+										onChange?.(x)
 									}}
-								/>
+									className="w-[280px]"
+								>
+									<HourSelector
+										value={date}
+										step={3}
+										onSelect={(date) => {
+											setDate(date)
+											onChange?.(date)
+										}}
+									/>
+								</Calendar>
 							</motion.div>
 						</Popover.Content>
 					</Popover.Portal>

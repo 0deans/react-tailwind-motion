@@ -24,12 +24,21 @@ interface CalendarProps {
 	min?: Dayjs
 	max?: Dayjs
 	onChange?: (date: Dayjs) => void
+	children?: ReactNode
+	className?: string
 }
 
-const Calendar = ({ value, min, max, onChange }: CalendarProps) => {
-	const [selectedDay, setSelectedDay] = useState<Dayjs | undefined>(value)
+const Calendar = ({
+	value,
+	min,
+	max,
+	onChange,
+	children,
+	className
+}: CalendarProps) => {
 	const [currentMonth, setCurrentMonth] = useState<Dayjs>(value ?? dayjs())
 	const [direction, setDirection] = useState<Direction>('right')
+	const [isAnimating, setIsAnimating] = useState(false)
 
 	const newDays = getDaysBetween(
 		currentMonth.startOf('month').isoWeekday(1),
@@ -37,24 +46,28 @@ const Calendar = ({ value, min, max, onChange }: CalendarProps) => {
 	)
 
 	function nextMonth() {
+		if (isAnimating) return
 		const nextMonth = currentMonth.add(1, 'month')
 		setCurrentMonth(nextMonth)
 		setDirection('right')
+		setIsAnimating(true)
 	}
 
 	function prevMonth() {
+		if (isAnimating) return
 		const prevMonth = currentMonth.subtract(1, 'month')
 		setCurrentMonth(prevMonth)
 		setDirection('left')
-	}
-
-	function handleSelect(day: Dayjs) {
-		setSelectedDay(day)
-		onChange?.(day)
+		setIsAnimating(true)
 	}
 
 	return (
-		<div className="flex h-fit flex-col rounded-md bg-white p-3 text-gray-700">
+		<div
+			className={cn(
+				'relative flex h-fit flex-col overflow-hidden rounded-md bg-white p-3 text-gray-700',
+				className
+			)}
+		>
 			<div className="flex items-center">
 				<h2 className="flex-auto font-semibold capitalize">
 					{currentMonth.format('MMMM YYYY')}
@@ -90,24 +103,27 @@ const Calendar = ({ value, min, max, onChange }: CalendarProps) => {
 					initial={false}
 					custom={direction}
 					mode="popLayout"
+					onExitComplete={() => setIsAnimating(false)}
 				>
-					<div className="grid grid-cols-7 overflow-hidden text-sm">
+					<motion.div
+						key={currentMonth.toString()}
+						variants={variants}
+						custom={direction}
+						initial="enter"
+						animate="middle"
+						exit="exit"
+						className="grid grid-cols-7 text-sm"
+					>
 						{newDays.map((day, index) => {
 							const disabled =
 								(min && day.isBefore(min, 'day')) ||
 								(max && day.isAfter(max, 'day'))
-							const selected =
-								selectedDay && day.isSame(selectedDay, 'day')
+							const selected = value && day.isSame(value, 'day')
 
 							return (
-								<motion.div
-									key={`${day.toString()}-${index}`}
-									variants={variants}
-									custom={direction}
-									initial="enter"
-									animate="middle"
-									exit="exit"
+								<div
 									className="p-0.5"
+									key={`${day.toString()}-${index}`}
 								>
 									<button
 										className={cn(
@@ -124,7 +140,7 @@ const Calendar = ({ value, min, max, onChange }: CalendarProps) => {
 											selected && 'bg-blue-500 text-white'
 										)}
 										disabled={disabled}
-										onClick={() => handleSelect(day)}
+										onClick={() => onChange?.(day)}
 									>
 										<time
 											dateTime={day.format('YYYY-MM-DD')}
@@ -132,12 +148,13 @@ const Calendar = ({ value, min, max, onChange }: CalendarProps) => {
 											{day.format('D')}
 										</time>
 									</button>
-								</motion.div>
+								</div>
 							)
 						})}
-					</div>
+					</motion.div>
 				</AnimatePresence>
 			</ResizablePanel>
+			{children}
 		</div>
 	)
 }
@@ -152,6 +169,7 @@ const ResizablePanel = ({ children }: { children: ReactNode }) => {
 			animate={{
 				height: bounds.height > 0 ? bounds.height : 'auto'
 			}}
+			className="overflow-hidden"
 		>
 			<div ref={ref}>{children}</div>
 		</motion.div>
